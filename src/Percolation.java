@@ -1,4 +1,3 @@
-import edu.princeton.cs.algs4.Stopwatch;
 import edu.princeton.cs.algs4.WeightedQuickUnionUF;
 
 /**
@@ -9,9 +8,10 @@ public class Percolation
     private int gridSize;
     private int openSites;
     private final static int virtTopSite = 0;
+    private static int virtBottomSite;
     private boolean[][] grid;
     private WeightedQuickUnionUF wquf;
-    private Stopwatch sw;
+    private static final int[][] DIRECTIONS = {{1, 0}, {0, -1}, {-1, 0}, {0, 1}};
 
 
     public Percolation(int n)                // create n-by-n grid, with all sites blocked
@@ -21,6 +21,7 @@ public class Percolation
         openSites = 0;
         grid = new boolean[gridSize][gridSize];
         wquf = new WeightedQuickUnionUF(gridSize*gridSize + 2);
+        virtBottomSite = gridSize*gridSize + 1;
 
         for(int i=0;i<n; i++)
         {
@@ -39,29 +40,43 @@ public class Percolation
         return 1+(row-1)*gridSize + (col-1);
     }
 
+    private boolean isValid(int row, int col)
+    {
+        return (row >=1 && row <= gridSize && col >=1 && col <= gridSize);
+    }
+
+
+
     public void open(int row, int col)    // open site (row, col) if it is not open already
     {
-        if((row <1 && row > gridSize) || (col <1 && col > gridSize)) throw new java.lang.IllegalArgumentException();
+        if(!isValid(row,col)) throw new java.lang.IllegalArgumentException();
         if(!isOpen(row,col))
         {
             grid[row-1][col-1] = true;
-            if(row==1) wquf.union(getUFIndex(row, col),virtTopSite); //first row elements connected to virtTopSite
-
-
             openSites++;
+
+            if(row==1) wquf.union(getUFIndex(row, col),virtTopSite); //first row elements connected to virtTopSite
+            if(row==gridSize) wquf.union(getUFIndex(row, col),virtBottomSite); //and last row to virtBottomSite
+            for (int[] r: DIRECTIONS )
+            {
+                if(isValid(row + r[0], col + r[1]) && isOpen(row + r[0], col + r[1]))
+                {
+                    wquf.union(getUFIndex(row, col),getUFIndex(row+r[0], col+r[1]));
+                }
+            }
         }
     }
 
     public boolean isOpen(int row, int col)  // is site (row, col) open?
     {
-        if((row <1 && row > gridSize) || (col <1 && col > gridSize)) throw new java.lang.IllegalArgumentException();
+        if(!isValid(row,col)) throw new java.lang.IllegalArgumentException();
         return grid[row-1][col-1];
     }
 
     public boolean isFull(int row, int col)  // is site (row, col) full?
     {
-        if((row <1 && row > gridSize) || (col <1 && col > gridSize)) throw new java.lang.IllegalArgumentException();
-        return wquf.connected(0,getUFIndex(row,col));
+        if(!isValid(row,col)) throw new java.lang.IllegalArgumentException();
+        return wquf.connected(virtTopSite,getUFIndex(row,col));
     }
 
     public int numberOfOpenSites()       // number of open sites
@@ -71,7 +86,7 @@ public class Percolation
 
     public boolean percolates()              // does the system percolate?
     {
-        return wquf.connected(virtTopSite,gridSize*gridSize+1);
+        return wquf.connected(virtTopSite,virtBottomSite);
     }
 
     public static void main(String[] args)   // test client (optional)
